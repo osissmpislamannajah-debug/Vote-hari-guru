@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting Guru Terbaik & Tergaul 2026</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { font-size: 2rem; color: var(--primary); margin-bottom: 0.5rem; }
+        header p { color: var(--text-muted); }
+        
+        .section-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .section-box h2 { margin-bottom: 1rem; font-size: 1.25rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        
+        .form-group { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        select { flex: 1; min-width: 220px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; background: #fff; }
+        
+        .btn-vote { background-color: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .btn-vote:hover { background-color: var(--primary-hover); }
+        .btn-vote:disabled { background-color: #94a3b8; cursor: not-allowed; }
+
+        .result-item { margin-bottom: 1rem; }
+        .result-info { display: flex; justify-content: space-between; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.95rem; }
+        .progress-bar-bg { background-color: #e2e8f0; border-radius: 999px; height: 12px; overflow: hidden; }
+        .progress-bar-fill { background-color: var(--primary); height: 100%; width: 0%; transition: width 0.5s ease-in-out; border-radius: 999px; }
+
+        .btn-reset { background-color: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.9rem; cursor: pointer; margin-top: 1rem; }
+        .btn-reset:hover { background-color: #dc2626; }
+        .alert { background-color: #dcfce7; color: #166534; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500; display: none; }
+        .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Pemilihan Guru Terbaik & Tergaul</h1>
+        <p>Silakan berikan suara Anda untuk masing-masing kategori.</p>
+    </header>
+
+    <div id="globalAlert" class="alert">Suara Anda berhasil disimpan ke database!</div>
+    <div id="loadingIndicator" class="loading">Memuat data guru dari database...</div>
+
+    <!-- KATEGORI GURU TERBAIK -->
+    <div class="section-box" id="boxTerbaik" style="display:none;">
+        <h2>🏆 Kategori: Guru Terbaik</h2>
+        <div class="form-group">
+            <select id="selectTerbaik">
+                <option value="">-- Pilih Guru Terbaik --</option>
+            </select>
+            <button class="btn-vote" id="btnVoteTerbaik" onclick="castVote('Terbaik')">Kirim Suara Terbaik</button>
+        </div>
+        <div style="margin-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Hasil Sementara Guru Terbaik:</h3>
+            <div id="resultsTerbaik"></div>
+        </div>
+    </div>
+
+    <!-- KATEGORI GURU TERGAUL -->
+    <div class="section-box" id="boxTergaul" style="display:none;">
+        <h2>😎 Kategori: Guru Tergaul</h2>
+        <div class="form-group">
+            <select id="selectTergaul">
+                <option value="">-- Pilih Guru Tergaul --</option>
+            </select>
+            <button class="btn-vote" id="btnVoteTergaul" onclick="castVote('Tergaul')">Kirim Suara Tergaul</button>
+        </div>
+        <div style="margin-top: 1.5rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Hasil Sementara Guru Tergaul:</h3>
+            <div id="resultsTergaul"></div>
+        </div>
+    </div>
+
+    <div style="text-align: center;">
+        <button class="btn-reset" onclick="resetVoting()">Reset Semua Suara</button>
+    </div>
+</div>
+
+<script>
+    // URL Web App Google Apps Script terbaru Anda (berakhiran /exec)
+    const API_URL = "https://script.google.com/macros/s/AKfycbxevRS8-JIeqWh2vx3bUVOsKpw-vfC_o4bcsKCxoL4_i-n8oIT0t2-3F9CTRsCTTEgtYA/exec";
+    let appData = { terbaik: [], tergaul: [] };
+    
+    let votedTerbaik = localStorage.getItem('voted_terbaik') === 'true';
+    let votedTergaul = localStorage.getItem('voted_tergaul') === 'true';
+
+    async function loadData() {
+        document.getElementById('loadingIndicator').style.display = 'block';
+        try {
+            const response = await fetch(API_URL);
+            appData = await response.json();
+            render();
+            document.getElementById('boxTerbaik').style.display = 'block';
+            document.getElementById('boxTergaul').style.display = 'block';
+        } catch (error) {
+            document.getElementById('loadingIndicator').textContent = "Gagal memuat data dari database. Pastikan akses deployment diset ke 'Siapa saja'.";
+            console.error(error);
+        } finally {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+    }
+
+    function render() {
+        // Render dropdown & hasil kategori Terbaik
+        const selTerbaik = document.getElementById('selectTerbaik');
+        const resTerbaik = document.getElementById('resultsTerbaik');
+        selTerbaik.innerHTML = '<option value="">-- Pilih Guru Terbaik --</option>';
+        resTerbaik.innerHTML = '';
+        
+        let totalTerbaik = appData.terbaik.reduce((sum, c) => sum + Number(c.votes), 0);
+        appData.terbaik.forEach(c => {
+            selTerbaik.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            let pct = totalTerbaik === 0 ? 0 : Math.round((Number(c.votes) / totalTerbaik) * 100);
+            resTerbaik.innerHTML += `
+                <div class="result-item">
+                    <div class="result-info"><span>${c.name}</span><span>${c.votes} suara (${pct}%)</span></div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${pct}%"></div></div>
+                </div>`;
+        });
+
+        if (votedTerbaik) {
+            selTerbaik.value = "";
+            selTerbaik.disabled = true;
+            document.getElementById('btnVoteTerbaik').disabled = true;
+            document.getElementById('btnVoteTerbaik').textContent = "Sudah Memilih";
+        }
+
+        // Render dropdown & hasil kategori Tergaul
+        const selTergaul = document.getElementById('selectTergaul');
+        const resTergaul = document.getElementById('resultsTergaul');
+        selTergaul.innerHTML = '<option value="">-- Pilih Guru Tergaul --</option>';
+        resTergaul.innerHTML = '';
+
+        let totalTergaul = appData.tergaul.reduce((sum, c) => sum + Number(c.votes), 0);
+        appData.tergaul.forEach(c => {
+            selTergaul.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            let pct = totalTergaul === 0 ? 0 : Math.round((Number(c.votes) / totalTergaul) * 100);
+            resTergaul.innerHTML += `
+                <div class="result-item">
+                    <div class="result-info"><span>${c.name}</span><span>${c.votes} suara (${pct}%)</span></div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${pct}%"></div></div>
+                </div>`;
+        });
+
+        if (votedTergaul) {
+            selTergaul.value = "";
+            selTergaul.disabled = true;
+            document.getElementById('btnVoteTergaul').disabled = true;
+            document.getElementById('btnVoteTergaul').textContent = "Sudah Memilih";
+        }
+    }
+
+    async function castVote(category) {
+        let selectId = category === 'Terbaik' ? 'selectTerbaik' : 'selectTergaul';
+        let selectedId = document.getElementById(selectId).value;
+
+        if (!selectedId) {
+            alert("Silakan pilih nama guru terlebih dahulu!");
+            return;
+        }
+
+        if (category === 'Terbaik') {
+            votedTerbaik = true;
+            localStorage.setItem('voted_terbaik', 'true');
+        } else {
+            votedTergaul = true;
+            localStorage.setItem('voted_tergaul', 'true');
+        }
+
+        render();
+        document.getElementById('globalAlert').style.display = 'block';
+
+        try {
+            await fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "vote", category: category, id: Number(selectedId) })
+            });
+            setTimeout(loadData, 1500);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function resetVoting() {
+        if (confirm("Yakin ingin mereset seluruh suara untuk kedua kategori?")) {
+            localStorage.removeItem('voted_terbaik');
+            localStorage.removeItem('voted_tergaul');
+            votedTerbaik = false;
+            votedTergaul = false;
+            
+            fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "reset" })
+            }).then(() => setTimeout(loadData, 1500));
+        }
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>
