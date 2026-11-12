@@ -36,8 +36,6 @@
         .progress-bar-bg { background-color: #e2e8f0; border-radius: 999px; height: 12px; overflow: hidden; }
         .progress-bar-fill { background-color: var(--primary); height: 100%; width: 0%; transition: width 0.5s ease-in-out; border-radius: 999px; }
 
-        .btn-reset { background-color: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.9rem; cursor: pointer; margin-top: 1rem; }
-        .btn-reset:hover { background-color: #dc2626; }
         .alert { background-color: #dcfce7; color: #166534; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500; display: none; }
         .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-weight: 600; }
     </style>
@@ -82,15 +80,10 @@
             <div id="resultsTergaul"></div>
         </div>
     </div>
-
-    <div style="text-align: center;">
-        <button class="btn-reset" onclick="resetVoting()">Reset Semua Suara</button>
-    </div>
 </div>
 
 <script>
-    // URL Web App Google Apps Script terbaru Anda (berakhiran /exec)
-    const API_URL = "https://script.google.com/macros/s/AKfycbxevRS8-JIeqWh2vx3bUVOsKpw-vfC_o4bcsKCxoL4_i-n8oIT0t2-3F9CTRsCTTEgtYA/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwgkVeOpa6f2vPcjNwwh2bRKtUJn5wqu1wI0roOhbx83-nmmfBBT6CfzlCEgLCSdKV60A/exec";
     let appData = { terbaik: [], tergaul: [] };
     
     let votedTerbaik = localStorage.getItem('voted_terbaik') === 'true';
@@ -105,7 +98,7 @@
             document.getElementById('boxTerbaik').style.display = 'block';
             document.getElementById('boxTergaul').style.display = 'block';
         } catch (error) {
-            document.getElementById('loadingIndicator').textContent = "Gagal memuat data dari database. Pastikan akses deployment diset ke 'Siapa saja'.";
+            document.getElementById('loadingIndicator').textContent = "Gagal memuat data dari database.";
             console.error(error);
         } finally {
             document.getElementById('loadingIndicator').style.display = 'none';
@@ -113,7 +106,6 @@
     }
 
     function render() {
-        // Render dropdown & hasil kategori Terbaik
         const selTerbaik = document.getElementById('selectTerbaik');
         const resTerbaik = document.getElementById('resultsTerbaik');
         selTerbaik.innerHTML = '<option value="">-- Pilih Guru Terbaik --</option>';
@@ -137,7 +129,6 @@
             document.getElementById('btnVoteTerbaik').textContent = "Sudah Memilih";
         }
 
-        // Render dropdown & hasil kategori Tergaul
         const selTergaul = document.getElementById('selectTergaul');
         const resTergaul = document.getElementById('resultsTergaul');
         selTergaul.innerHTML = '<option value="">-- Pilih Guru Tergaul --</option>';
@@ -192,22 +183,6 @@
             setTimeout(loadData, 1500);
         } catch (error) {
             console.error(error);
-        }
-    }
-
-    function resetVoting() {
-        if (confirm("Yakin ingin mereset seluruh suara untuk kedua kategori?")) {
-            localStorage.removeItem('voted_terbaik');
-            localStorage.removeItem('voted_tergaul');
-            votedTerbaik = false;
-            votedTergaul = false;
-            
-            fetch(API_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: "reset" })
-            }).then(() => setTimeout(loadData, 1500));
         }
     }
 
