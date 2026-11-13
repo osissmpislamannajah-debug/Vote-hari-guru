@@ -13,9 +13,10 @@
             --text: #1e293b;
             --text-muted: #64748b;
             --border: #e2e8f0;
+            --success: #16a34a;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; line-height: 1.6; }
+        body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; line-height: 1.6; position: relative; min-height: 100vh; }
         .container { max-width: 800px; margin: 0 auto; }
         header { text-align: center; margin-bottom: 2rem; }
         header h1 { font-size: 2rem; color: var(--primary); margin-bottom: 0.5rem; }
@@ -38,6 +39,61 @@
 
         .alert { background-color: #dcfce7; color: #166534; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500; display: none; }
         .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-weight: 600; }
+
+        /* Tombol Rahasia Admin di Pojok Bawah / Atas */
+        .secret-admin-btn {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+        .secret-admin-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Modal Admin / Ruangan Khusus */
+        #adminModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.75);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .admin-panel {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 850px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: 1.2rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+        .close-modal:hover { color: var(--text); }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
     </style>
 </head>
 <body>
@@ -82,9 +138,38 @@
     </div>
 </div>
 
+<!-- TOMBOL RAHASIA ADMIN DI POJOK BAWAH -->
+<button class="secret-admin-btn" onclick="openAdminPanel()">🔒 Admin Panel</button>
+
+<!-- RUANGAN / MODAL ADMIN KHUSUS REAL-TIME -->
+<div id="adminModal">
+    <div class="admin-panel">
+        <button class="close-modal" onclick="closeAdminPanel()">&times;</button>
+        <div class="admin-header">
+            <h2>📊 Ruangan Admin: Real-Time Hasil Voting</h2>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: var(--bg); padding: 0.75rem 1rem; border-radius: 8px;">
+            <span style="font-size: 0.9rem; color: var(--success); font-weight: 600;">🟢 Terhubung (Auto-refresh tiap 5 detik)</span>
+            <button class="btn-vote" style="padding: 0.4rem 1rem; font-size: 0.9rem;" onclick="loadAdminData()">Segarkan Data</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+            <div>
+                <h3 style="color: var(--primary); margin-bottom: 0.75rem;">🏆 Guru Terbaik (<span id="adminTotalTerbaik">0</span> Suara)</h3>
+                <div id="adminResultsTerbaik"></div>
+            </div>
+            <div style="margin-top: 1rem;">
+                <h3 style="color: var(--primary); margin-bottom: 0.75rem;">😎 Guru Tergaul (<span id="adminTotalTergaul">0</span> Suara)</h3>
+                <div id="adminResultsTergaul"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzi5ZjX4-U3tjl8tSOx8jBn8U5Y3Ic5k19lqpRTv__MyeD7Oio3QrHJ7cZoQO8_gp2eVQ/exec";
     let appData = { terbaik: [], tergaul: [] };
+    let adminInterval = null;
     
     let votedTerbaik = localStorage.getItem('voted_terbaik') === 'true';
     let votedTergaul = localStorage.getItem('voted_tergaul') === 'true';
@@ -186,8 +271,30 @@
         }
     }
 
-    loadData();
-</script>
+    // --- FUNGSI ADMIN & PASSWORD ---
+    function openAdminPanel() {
+        let password = prompt("Masukkan Password Admin:");
+        if (password === "VOTE") {
+            document.getElementById('adminModal').style.display = 'flex';
+            loadAdminData();
+            // Auto refresh khusus dalam ruang admin tiap 5 detik
+            adminInterval = setInterval(loadAdminData, 5000);
+        } else if (password !== null) {
+            alert("Password salah!");
+        }
+    }
 
-</body>
-</html>
+    function closeAdminPanel() {
+        document.getElementById('adminModal').style.display = 'none';
+        clearInterval(adminInterval); // Hentikan auto-refresh saat ditutup
+    }
+
+    async function loadAdminData() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            
+            // Render Admin Terbaik
+            const adminResTerbaik = document.getElementById('adminResultsTerbaik');
+            adminResTerbaik.innerHTML = '';
+            let totalT = data.terbaik.reduce((sum, c)
