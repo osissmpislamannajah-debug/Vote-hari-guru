@@ -211,7 +211,7 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwjjD9LEU4gqneWtiwCWZgpRsGuU_O2e2fKHFR-f7DTJLDQhrsh23JSlmwo0ooa_Yw59Q/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbyyoaEukicfFNE_i2DsJlkKJRUU_Q98ach9SY-0n4FYYT8XGQC9SAereNdX9g6jk5yAjw/exec";
     let appData = { terbaik: [], tergaul: [], isLocked: false };
     let adminInterval = null;
     let isTimeExpired = false;
@@ -256,7 +256,7 @@
             document.getElementById('boxTerbaik').style.display = 'block';
             document.getElementById('boxTergaul').style.display = 'block';
         } catch (error) {
-            document.getElementById('loadingIndicator').textContent = "Gagal memuat data dari database. Pastikan izin Deploy Google Apps Script sudah diset ke 'Siapa saja (Anyone)'.";
+            document.getElementById('loadingIndicator').textContent = "Gagal memuat data dari database. Pastikan izin akses Deploy Apps Script sudah diatur ke 'Siapa saja (Anyone)'.";
             console.error(error);
         } finally {
             document.getElementById('loadingIndicator').style.display = 'none';
@@ -381,115 +381,3 @@
     }
 
     function closeAdminPanel() {
-        document.getElementById('adminModal').style.display = 'none';
-        clearInterval(adminInterval);
-    }
-
-    function updateLockButtonUI(lockedState) {
-        const btn = document.getElementById('btnToggleLock');
-        if (btn) {
-            if (lockedState) {
-                btn.textContent = "🔓 Buka Kunci Voting";
-                btn.className = "btn-unlock";
-            } else {
-                btn.textContent = "🔒 Kunci Voting Sekarang";
-                btn.className = "btn-lock";
-            }
-        }
-    }
-
-    async function toggleVotingLock() {
-        const nextState = !appData.isLocked;
-        const confirmMsg = nextState 
-            ? "Kunci voting sekarang? Semua pengguna tidak akan bisa mengirim suara lagi." 
-            : "Buka kembali akses voting untuk semua pengguna?";
-            
-        if (!confirm(confirmMsg)) return;
-
-        appData.isLocked = nextState;
-        updateLockButtonUI(nextState);
-        render();
-
-        try {
-            await fetch(API_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: "toggleLock", locked: nextState })
-            });
-        } catch (e) {
-            console.error("Gagal mengubah status kunci", e);
-        }
-    }
-
-    // --- 4. ANIMASI PERAYAAN CONFETTI (KHUSUS ADMIN) ---
-    function triggerCelebration() {
-        var duration = 4 * 1000;
-        var animationEnd = Date.now() + duration;
-        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
-
-        function randomInRange(min, max) {
-            return Math.random() * (max - min) + min;
-        }
-
-        var interval = setInterval(function() {
-            var timeLeft = animationEnd - Date.now();
-            if (timeLeft <= 0) {
-                return clearInterval(interval);
-            }
-            var particleCount = 50 * (timeLeft / duration);
-            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-        }, 250);
-    }
-
-    async function loadAdminData() {
-        try {
-            const response = await fetch(API_URL);
-            const data = await response.json();
-            appData = data;
-            updateLockButtonUI(data.isLocked);
-            render();
-            
-            const adminResTerbaik = document.getElementById('adminResultsTerbaik');
-            adminResTerbaik.innerHTML = '';
-            let totalT = data.terbaik.reduce((sum, c) => sum + Number(c.votes), 0);
-            document.getElementById('adminTotalTerbaik').textContent = totalT;
-            
-            let sortedT = [...data.terbaik].sort((a, b) => Number(b.votes) - Number(a.votes));
-            sortedT.forEach(c => {
-                let v = Number(c.votes);
-                let p = totalT === 0 ? 0 : Math.round((v / totalT) * 100);
-                adminResTerbaik.innerHTML += `
-                    <div class="result-item">
-                        <div class="result-info"><span>${c.name}</span><span>${v} suara (${p}%)</span></div>
-                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${p}%"></div></div>
-                    </div>`;
-            });
-
-            const adminResTergaul = document.getElementById('adminResultsTergaul');
-            adminResTergaul.innerHTML = '';
-            let totalG = data.tergaul.reduce((sum, c) => sum + Number(c.votes), 0);
-            document.getElementById('adminTotalTergaul').textContent = totalG;
-            
-            let sortedG = [...data.tergaul].sort((a, b) => Number(b.votes) - Number(b.votes));
-            sortedG.forEach(c => {
-                let v = Number(c.votes);
-                let p = totalG === 0 ? 0 : Math.round((v / totalG) * 100);
-                adminResTergaul.innerHTML += `
-                    <div class="result-item">
-                        <div class="result-info"><span>${c.name}</span><span>${v} suara (${p}%)</span></div>
-                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${p}%"></div></div>
-                    </div>`;
-            });
-
-        } catch (e) {
-            console.error("Gagal memuat data admin", e);
-        }
-    }
-
-    loadData();
-</script>
-
-</body>
-</html>
