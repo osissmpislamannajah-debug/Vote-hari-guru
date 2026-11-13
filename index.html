@@ -16,7 +16,7 @@
             --success: #16a34a;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; line-height: 1.6; position: relative; min-height: 100vh; }
+        body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; line-height: 1.6; min-height: 100vh; }
         .container { max-width: 800px; margin: 0 auto; }
         header { text-align: center; margin-bottom: 2rem; }
         header h1 { font-size: 2rem; color: var(--primary); margin-bottom: 0.5rem; }
@@ -40,27 +40,29 @@
         .alert { background-color: #dcfce7; color: #166534; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500; display: none; }
         .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-weight: 600; }
 
-        /* Tombol Rahasia Admin di Pojok Bawah / Atas */
-        .secret-admin-btn {
-            position: fixed;
-            bottom: 15px;
-            right: 15px;
-            background: rgba(37, 99, 235, 0.1);
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-            padding: 8px 12px;
+        /* Tombol Akses Admin yang Jelas di Bagian Bawah Halaman */
+        .admin-footer-access {
+            text-align: center;
+            margin-top: 3rem;
+            margin-bottom: 2rem;
+        }
+        .btn-admin-access {
+            background: #cbd5e1;
+            color: #475569;
+            border: none;
+            padding: 8px 16px;
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            z-index: 1000;
         }
-        .secret-admin-btn:hover {
+        .btn-admin-access:hover {
             background: var(--primary);
             color: white;
         }
 
-        /* Modal Admin / Ruangan Khusus */
+        /* Ruangan / Modal Admin */
         #adminModal {
             display: none;
             position: fixed;
@@ -136,10 +138,12 @@
             <div id="resultsTergaul"></div>
         </div>
     </div>
-</div>
 
-<!-- TOMBOL RAHASIA ADMIN DI POJOK BAWAH -->
-<button class="secret-admin-btn" onclick="openAdminPanel()">🔒 Admin Panel</button>
+    <!-- TOMBOL AKSES ADMIN DI BAGIAN BAWAH HALAMAN -->
+    <div class="admin-footer-access">
+        <button class="btn-admin-access" onclick="openAdminPanel()">🔐 Masuk Ruangan Admin (Real-Time)</button>
+    </div>
+</div>
 
 <!-- RUANGAN / MODAL ADMIN KHUSUS REAL-TIME -->
 <div id="adminModal">
@@ -277,7 +281,6 @@
         if (password === "VOTE") {
             document.getElementById('adminModal').style.display = 'flex';
             loadAdminData();
-            // Auto refresh khusus dalam ruang admin tiap 5 detik
             adminInterval = setInterval(loadAdminData, 5000);
         } else if (password !== null) {
             alert("Password salah!");
@@ -286,7 +289,7 @@
 
     function closeAdminPanel() {
         document.getElementById('adminModal').style.display = 'none';
-        clearInterval(adminInterval); // Hentikan auto-refresh saat ditutup
+        clearInterval(adminInterval);
     }
 
     async function loadAdminData() {
@@ -294,7 +297,45 @@
             const response = await fetch(API_URL);
             const data = await response.json();
             
-            // Render Admin Terbaik
             const adminResTerbaik = document.getElementById('adminResultsTerbaik');
             adminResTerbaik.innerHTML = '';
-            let totalT = data.terbaik.reduce((sum, c)
+            let totalT = data.terbaik.reduce((sum, c) => sum + Number(c.votes), 0);
+            document.getElementById('adminTotalTerbaik').textContent = totalT;
+            
+            let sortedT = [...data.terbaik].sort((a, b) => Number(b.votes) - Number(a.votes));
+            sortedT.forEach(c => {
+                let v = Number(c.votes);
+                let p = totalT === 0 ? 0 : Math.round((v / totalT) * 100);
+                adminResTerbaik.innerHTML += `
+                    <div class="result-item">
+                        <div class="result-info"><span>${c.name}</span><span>${v} suara (${p}%)</span></div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${p}%"></div></div>
+                    </div>`;
+            });
+
+            const adminResTergaul = document.getElementById('adminResultsTergaul');
+            adminResTergaul.innerHTML = '';
+            let totalG = data.tergaul.reduce((sum, c) => sum + Number(c.votes), 0);
+            document.getElementById('adminTotalTergaul').textContent = totalG;
+            
+            let sortedG = [...data.tergaul].sort((a, b) => Number(b.votes) - Number(a.votes));
+            sortedG.forEach(c => {
+                let v = Number(c.votes);
+                let p = totalG === 0 ? 0 : Math.round((v / totalG) * 100);
+                adminResTergaul.innerHTML += `
+                    <div class="result-item">
+                        <div class="result-info"><span>${c.name}</span><span>${v} suara (${p}%)</span></div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${p}%"></div></div>
+                    </div>`;
+            });
+
+        } catch (e) {
+            console.error("Gagal memuat data admin", e);
+        }
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>
